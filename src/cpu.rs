@@ -61,7 +61,7 @@ impl Cpu {
                 // JSRR is a variation of JSR, same opcode
                 self.registers[7] = self.pc; // Store PC in R7
                 if (instr >> 11) & 1 == 1 {
-                    self.pc += sext(instr & 0x7FF, 11);
+                    self.pc = self.pc.wrapping_add(sext(instr & 0x7FF, 11))
                 } else {
                     self.pc = self.registers[b as usize];
                 }
