@@ -1,3 +1,5 @@
+use crate::terminal;
+
 #[derive(Debug, Clone)]
 pub struct Memory {
     data: [u16; 0x10000],
@@ -15,6 +17,15 @@ impl Memory {
     }
 
     pub fn read(&self, address: u16) -> u16 {
+        // Emulate KBSR and KBDR
+        // This way of doing it is wrong, but it works sometimes
+        // An asynchronous queue is probably needed to handle this properly
+        if address == 0xFE00 {
+            return 0x8000;
+        }
+        if address == 0xFE02 {
+            return terminal::read_raw().expect("CTRL-C!");
+        }
         self.data[address as usize]
     }
 

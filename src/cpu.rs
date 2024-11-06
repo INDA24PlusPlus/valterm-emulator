@@ -1,8 +1,6 @@
-use std::io::{self, Read, Write};
+use std::io::{self, Write};
 
-use termion::raw::IntoRawMode;
-
-use crate::{memory::Memory, opcodes};
+use crate::{memory::Memory, opcodes, terminal};
 
 pub struct Cpu {
     pub registers: [u16; 8],
@@ -121,10 +119,8 @@ impl Cpu {
         self.registers[7] = self.pc; // Store PC in R7 just to comply with specification, not used
         if vector == 0x20 {
             // GETC
-            let _stdout = io::stdout().into_raw_mode().unwrap(); // Temporarily switch to raw mode
-            let mut buffer = [0u8];
-            io::stdin().read_exact(&mut buffer).unwrap();
-            self.registers[0] = buffer[0] as u16;
+            let c = terminal::read_raw().expect("CTRL-C!");
+            self.registers[0] = c;
         } else if vector == 0x21 {
             // OUT
             let chr = (self.registers[0] as u8) as char;
@@ -140,28 +136,15 @@ impl Cpu {
                 addr += 1;
                 c = self.memory.read(addr);
             }
+            io::stdout().flush().unwrap();
         } else if vector == 0x23 {
             // IN
-            let mut buffer = [0u8];
-            {
-                let _stdout = io::stdout().into_raw_mode().unwrap(); // Temporarily switch to raw mode
-                print!("> ");
-                io::stdout().flush().unwrap();
-                io::stdin().read_exact(&mut buffer).unwrap();
-                buffer[0] = match buffer[0] {
-                    b'\r' => b'\n',
-                    3 => {
-                        println!("CTRL-C");
-                        self.halted = true;
-                        return;
-                    }
-                    x => x,
-                };
-                self.registers[0] = buffer[0] as u16;
-            }
-            print!("{}", buffer[0] as char);
+            print!("> ");
             io::stdout().flush().unwrap();
-            //println!("READ: {:X}", buffer[0]);
+            let c = terminal::read_raw().expect("CTRL-C!");
+            self.registers[0] = c;
+            print!("{}", (c as u8) as char);
+            io::stdout().flush().unwrap();
         } else if vector == 0x24 {
             // PUTSP
             let mut addr = self.registers[0];
